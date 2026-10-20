@@ -1,4 +1,5 @@
 "use server";
+import { requireAccess } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { database } from "@/lib/supabase/server";
 import { priceSchema, idSchema } from "@/lib/validations";
@@ -20,6 +21,7 @@ export async function saveRecord(
   original?: PriceRecord,
 ): Promise<ActionResult> {
   try {
+    await requireAccess();
     const parsed = priceSchema.safeParse(input);
     if (!parsed.success)
       return { ok: false, error: parsed.error.issues[0].message };
@@ -78,6 +80,7 @@ export async function deleteRecord(
   original: PriceRecord,
 ): Promise<ActionResult> {
   try {
+    await requireAccess();
     if (!idSchema.safeParse(original.id).success)
       return { ok: false, error: "شناسه نامعتبر است." };
     let query = database()

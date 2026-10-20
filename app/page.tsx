@@ -1,9 +1,12 @@
+import { hasAccess } from "@/lib/auth";
+import { LoginForm } from "@/components/login-form";
 import { RetryButton } from "@/components/retry-button";
 import { Header } from "@/components/header";
 import { Dashboard } from "@/components/dashboard";
 import { allRecords } from "@/lib/prices";
 export const dynamic = "force-dynamic";
 export default async function Home() {
+  if (!(await hasAccess())) return <LoginForm />;
   let records;
   try {
     records = await allRecords();

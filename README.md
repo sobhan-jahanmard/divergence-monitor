@@ -15,9 +15,13 @@ Requires Node.js 20.19+ and npm.
 
 For production: `npm run build`, then `npm start`. Set the same environment variables in your hosting provider. Deploy as a Node.js Next.js application, not a static export. The build does not need database credentials; pages load live data at request time. Missing credentials show a Persian configuration error, not fabricated data.
 
-## Public write access
+## Shared password access
 
-**Anyone who can access the deployed application can add, edit, or delete records.** This is intentional. There is no login, password, account, or protected route. Database RLS and revoked anonymous grants prevent direct browser database access; the server-only service role performs validated operations through explicit Server Actions. Keep the application private at the hosting/network layer if public editing is unwanted.
+The dashboard and records page require the shared password `Jahanmard` (case-insensitive), checked only by a Server Action. The password is intentionally hardcoded in the server-only `lib/auth-core.ts`, as requested. There are no user accounts or Supabase Auth dependencies.
+
+Successful login sets an HMAC-signed, HttpOnly, SameSite=Lax cookie for exactly seven days, with Secure enabled in production. The server verifies its signature and expiry on page loads, data reads, and every create/update/delete action. Expiry is fixed from login rather than extended on each visit. Logout clears the cookie. The existing server-only Supabase service-role key signs sessions, so rotating that key invalidates existing sessions. Production requires HTTPS.
+
+Anyone with the shared password can view, add, edit, or delete records. Database RLS and revoked anonymous grants continue to prevent direct browser database access.
 
 ## Data and calculations
 

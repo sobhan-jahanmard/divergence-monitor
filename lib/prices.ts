@@ -1,4 +1,5 @@
 import "server-only";
+import { requireAccess } from "./auth";
 import { database } from "./supabase/server";
 import type { PriceRecord } from "./types";
 export const columns =
@@ -24,6 +25,7 @@ export function normalize(rows: PriceRecord[]) {
   });
 }
 export async function allRecords() {
+  await requireAccess();
   const db = database();
   const result: PriceRecord[] = [];
   for (let from = 0; ; from += 1000) {
@@ -42,6 +44,7 @@ export async function allRecords() {
   return result;
 }
 export async function paginatedRecords(page: number) {
+  await requireAccess();
   const db = database();
   const { count, error } = await db
     .from("divergence_monitor_project_price_records")

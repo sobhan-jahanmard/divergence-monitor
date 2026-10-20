@@ -1,3 +1,5 @@
+import { hasAccess } from "@/lib/auth";
+import { LoginForm } from "@/components/login-form";
 import { RetryButton } from "@/components/retry-button";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/header";
@@ -10,6 +12,7 @@ export default async function Records({
 }: {
   searchParams: Promise<{ page?: string | string[] }>;
 }) {
+  if (!(await hasAccess())) return <LoginForm />;
   const params = await searchParams;
   const page = pageNumber(params.page);
   let result;

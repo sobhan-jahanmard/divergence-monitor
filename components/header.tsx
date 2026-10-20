@@ -1,3 +1,4 @@
+import { logout } from "@/app/auth-actions";
 import Link from "next/link";
 import { ChartNoAxesCombined, House, Database } from "lucide-react";
 import { PriceFormDialog } from "./price-form-dialog";
@@ -23,7 +24,11 @@ export function Header({ records = false }: { records?: boolean }) {
             مدیریت اطلاعات
           </Link>
         </div>
-        <span className="location">مشهد، قاسم‌آباد</span>
+        <form action={logout}>
+          <button type="submit" className="button outline">
+            خروج
+          </button>
+        </form>
       </nav>
       <header className="page-header">
         <div>

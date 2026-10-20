@@ -6,7 +6,7 @@ create table public.divergence_monitor_project_price_records (
  gold_18k_price_toman bigint null check (gold_18k_price_toman > 0 and gold_18k_price_toman <= 9007199254740991),
  created_at timestamptz not null default now()
 );
--- Browser/anonymous database access is disabled. Public app writes go through validated Server Actions.
+-- Browser/anonymous database access is disabled. App writes go through authenticated, validated Server Actions.
 alter table public.divergence_monitor_project_price_records enable row level security;
 revoke all on public.divergence_monitor_project_price_records from anon, authenticated;
 grant select, insert, update, delete on public.divergence_monitor_project_price_records to service_role;
