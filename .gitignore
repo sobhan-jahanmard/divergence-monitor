@@ -1,0 +1,32 @@
+# Dependencies
+/node_modules/
+/.pnp/
+.pnp.*
+
+# Next.js and build output
+/.next/
+/out/
+/build/
+/dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# Environment and credentials
+.env*
+!.env.example
+*.pem
+*.key
+/supabase/.temp/
+/supabase/.branches/
+
+# Tests and tooling
+/coverage/
+/.cache/
+*.log
+
+# Editor and OS files
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
