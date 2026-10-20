@@ -1,13 +1,13 @@
 # خانه‌نما — Ghasem Abad apartment price tracker
 
-A two-page Persian RTL Next.js application. All input prices are **Toman**, never Rial. No sample data or external financial APIs are used.
+A two-page Persian RTL Next.js application. All stored prices are **Toman**, never Rial. Apartment prices are entered manually; historical USDT and 18K gold prices can be filled from market data.
 
 ## Setup
 
 Requires Node.js 20.19+ and npm.
 
 1. Run `npm ci`.
-2. Create a Supabase project. In its SQL editor run `supabase/migrations/001_create_price_records.sql` (or apply it with the Supabase CLI).
+2. Create a Supabase project. In its SQL editor run `supabase/migrations/001_create_price_records.sql`, `002_rename_usd_to_usdt.sql`, and `003_allow_duplicate_record_dates.sql` in order (or apply them with the Supabase CLI). Existing deployments need migrations `002` and `003`.
 3. Copy `.env.example` to `.env.local` and set:
    - `NEXT_PUBLIC_SUPABASE_URL`: your Supabase project URL.
    - `SUPABASE_SERVICE_ROLE_KEY`: the project's service role key. **Server only**; never prefix this key with `NEXT_PUBLIC_`.
@@ -25,13 +25,16 @@ Anyone with the shared password can view, add, edit, or delete records. Database
 
 ## Data and calculations
 
-- Database dates are Gregorian `DATE`; the calendar picker, chart groups, and labels use Jalali dates.
-- One record per date is enforced by a database unique constraint.
+- Database dates are Gregorian `DATE`; the calendar picker, chart groups, and labels use Jalali dates. Dates after today in Tehran are disabled in the picker and rejected by server validation.
+- Multiple records can share a date after migration `003` removes the old unique constraint. The records table orders same-day entries by creation time and ID; daily charts retain each entry.
 - Positive whole Toman amounts are limited to JavaScript's safe integer maximum (9,007,199,254,740,991) in both Zod and SQL. PostgreSQL BIGINT supports larger values, but those are intentionally rejected to avoid silent precision loss in JSON/JavaScript. Derived ratios use floating point, with formatting only at display time.
-- USD and gold ratios are calculated for each record before aggregation. Monthly/yearly means exclude null rates independently. No interpolation or synthetic records are added; daily lines do not connect across null conversions.
+- USDT and gold ratios are calculated for each record before aggregation. Monthly/yearly means exclude null rates independently. No interpolation or synthetic records are added; daily lines do not connect across null conversions.
+- The form's market lookup requests a daily `USDTIRT` close from Nobitex for the selected Tehran date and converts Rial to Toman. If Nobitex is unavailable or has no candle, it tries TGJU's historical `USDT_IRR` rate, then TGJU's free-market `USD_IRR_FREE` rate as a proxy; the form warns when it uses USD because USD and USDT can differ. Gold uses TGJU's `GOLD_18K_IRR` data. These are online JSON files from Iran Market Data, not files stored in this project: historical files are cached for up to one hour, while today's fresh snapshot is preferred and cached for up to five minutes. A snapshot is accepted only for the matching Tehran date. If a rate is blank when Save is clicked, the form fetches missing rates first and shows them for review; clicking Save again writes the record. Nobitex may reject requests from some server locations (HTTP 403); the TGJU sources provide a fallback.
+- Migration `002` renames the existing USD column to USDT and retains all existing numbers, as requested. Historical USD entries are therefore displayed as USDT after migration.
+- Until migration `002` is applied, the app reads and writes the existing `usd_price_toman` column under the Tether label. After the rename it automatically switches to `usdt_price_toman`, so local use is not blocked by migration timing.
 - Chart headline and percentage changes follow the selected aggregation and compare the two latest valid plotted values. Single valid values have no percentage change.
 - Charts fetch the full history in ordered 1,000-row batches. Table pagination runs server-side in pages of 10 with an exact total; invalid and out-of-range pages are normalized. Deleting the last row redirects to the last available page.
-- Mutations compare original editable values in the database predicate to detect stale edits/deletes, and report conflicts. Unique constraints handle concurrent same-date inserts.
+- Mutations compare original editable values in the database predicate to detect stale edits/deletes, and report conflicts.
 - Supabase errors are logged server-side; Persian failures are returned to the UI. The service key is imported only through `server-only` modules.
 
 ## Structure
@@ -51,4 +54,4 @@ Tests cover per-record conversions, independent null averages, Jalali month/year
 
 Dependency audit: production dependencies have no reported advisories at implementation time. The development-only Next.js ESLint toolchain currently has transitive glob/braces advisories with no compatible upstream fix; it is not part of the production server.
 
-This app uses only the dedicated table `public.divergence_monitor_project_price_records` and can share a Supabase project with other applications. No other tables or services are required.
+This app uses only the dedicated table `public.divergence_monitor_project_price_records` and can share a Supabase project with other applications. Manual entry works without the market data services; automatic lookup depends on Nobitex and Iran Market Data availability.

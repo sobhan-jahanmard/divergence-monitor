@@ -14,7 +14,7 @@ import {
   ArrowDownLeft,
   ChartNoAxesCombined,
   Coins,
-  DollarSign,
+  CircleDollarSign,
   Building2,
 } from "lucide-react";
 import { aggregate, latestChange, type Point } from "@/lib/metrics";
@@ -29,11 +29,11 @@ const metrics = [
     icon: Building2,
   },
   {
-    key: "usd",
-    title: "قیمت هر متر مربع به دلار",
-    unit: "دلار",
+    key: "usdt",
+    title: "قیمت هر متر مربع به تتر",
+    unit: "تتر",
     color: "#5375bb",
-    icon: DollarSign,
+    icon: CircleDollarSign,
   },
   {
     key: "gold",
@@ -87,8 +87,8 @@ function Chart({
           <p>داده‌ای برای نمایش وجود ندارد</p>
           <small>
             برای مشاهده روند، قیمت{" "}
-            {metric.key === "usd"
-              ? "دلار"
+            {metric.key === "usdt"
+              ? "تتر"
               : metric.key === "gold"
                 ? "طلا"
                 : "مسکن"}{" "}
@@ -160,8 +160,8 @@ function Chart({
         <span className="legend-dot" style={{ background: metric.color }} />
         {metric.key === "toman"
           ? "قیمت ثبت‌شده مسکن"
-          : metric.key === "usd"
-            ? "قیمت مسکن ÷ قیمت هر دلار"
+          : metric.key === "usdt"
+            ? "قیمت مسکن ÷ قیمت هر تتر"
             : "قیمت مسکن ÷ قیمت هر گرم طلای ۱۸ عیار"}
       </div>
     </section>

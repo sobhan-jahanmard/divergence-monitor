@@ -10,8 +10,18 @@ export function gregorian(value: string) {
   if (!isValid(d) || format(d, "yyyy/MM/dd") !== value) return null;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+export function tehranToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
 export function today() {
-  return format(new Date(), "yyyy/MM/dd");
+  return jalali(tehranToday());
 }
 export function digits(s: string) {
   return s

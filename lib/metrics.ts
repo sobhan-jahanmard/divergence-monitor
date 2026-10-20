@@ -4,7 +4,7 @@ export type Point = {
   date: string;
   label: string;
   toman: number;
-  usd: number | null;
+  usdt: number | null;
   gold: number | null;
 };
 export function convert(r: PriceRecord): Point {
@@ -12,7 +12,9 @@ export function convert(r: PriceRecord): Point {
     date: r.record_date,
     label: jalali(r.record_date),
     toman: r.apartment_price_toman,
-    usd: r.usd_price_toman ? r.apartment_price_toman / r.usd_price_toman : null,
+    usdt: r.usdt_price_toman
+      ? r.apartment_price_toman / r.usdt_price_toman
+      : null,
     gold: r.gold_18k_price_toman
       ? r.apartment_price_toman / r.gold_18k_price_toman
       : null,
@@ -29,7 +31,7 @@ export function aggregate(records: PriceRecord[], mode: Aggregation): Point[] {
     groups.set(key, [...(groups.get(key) || []), p]);
   }
   return [...groups].map(([label, ps]) => {
-    const avg = (key: "toman" | "usd" | "gold") => {
+    const avg = (key: "toman" | "usdt" | "gold") => {
       const v = ps.map((p) => p[key]).filter((n): n is number => n !== null);
       return v.length ? v.reduce((a, b) => a + b / v.length, 0) : null;
     };
@@ -37,12 +39,12 @@ export function aggregate(records: PriceRecord[], mode: Aggregation): Point[] {
       date: ps[ps.length - 1].date,
       label,
       toman: avg("toman")!,
-      usd: avg("usd"),
+      usdt: avg("usdt"),
       gold: avg("gold"),
     };
   });
 }
-export function latestChange(points: Point[], key: "toman" | "usd" | "gold") {
+export function latestChange(points: Point[], key: "toman" | "usdt" | "gold") {
   const valid = points
     .map((p) => p[key])
     .filter((v): v is number => v !== null);

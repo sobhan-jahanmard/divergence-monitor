@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { gregorian, digits } from "./date";
+import { gregorian, digits, tehranToday } from "./date";
 const money = z
   .string()
   .transform((v) => digits(v).replace(/[,٬\s]/g, ""))
@@ -17,9 +17,15 @@ export const priceSchema = z.object({
   date: z
     .string()
     .transform(digits)
-    .refine((v) => gregorian(v) !== null, "تاریخ شمسی معتبر وارد کنید"),
+    .superRefine((value, context) => {
+      const date = gregorian(value);
+      if (date === null)
+        context.addIssue({ code: "custom", message: "تاریخ شمسی معتبر وارد کنید" });
+      else if (date > tehranToday())
+        context.addIssue({ code: "custom", message: "تاریخ آینده قابل انتخاب نیست" });
+    }),
   apartment: money,
-  usd: optional,
+  usdt: optional,
   gold: optional,
 });
 export const idSchema = z.uuid({ error: "شناسه رکورد نامعتبر است" });

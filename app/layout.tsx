@@ -6,9 +6,9 @@ import "@fontsource/vazirmatn/600.css";
 import "@fontsource/vazirmatn/700.css";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "خانه‌نما | روند قیمت مسکن در قاسم‌آباد",
+  title: "خانه‌نما | روند قیمت مسکن در قاسم‌آباد (واحد ۱۰۰ متری در «پیام»)",
   description:
-    "مقایسه تاریخی قیمت هر متر مربع آپارتمان در قاسم‌آباد مشهد با دلار و طلای ۱۸ عیار",
+    "مقایسه تاریخی قیمت هر متر مربع آپارتمان در قاسم‌آباد مشهد با تتر و طلای ۱۸ عیار",
 };
 export default function RootLayout({
   children,

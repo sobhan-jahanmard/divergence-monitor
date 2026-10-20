@@ -5,7 +5,45 @@ import { database } from "@/lib/supabase/server";
 import { priceSchema, idSchema } from "@/lib/validations";
 import { gregorian } from "@/lib/date";
 import type { PriceRecord } from "@/lib/types";
+import { fetchGold, fetchTetherRate } from "@/lib/market-prices";
+import { priceColumn } from "@/lib/supabase/price-column";
 type ActionResult = { ok: true } | { ok: false; error: string };
+export async function lookupMarketPrices(date: string) {
+  await requireAccess();
+  const parsed = priceSchema.shape.date.safeParse(date);
+  if (!parsed.success)
+    return { ok: false as const, error: "تاریخ شمسی معتبر وارد کنید." };
+  const [usdtResult, goldResult] = await Promise.allSettled([
+    fetchTetherRate(parsed.data),
+    fetchGold(parsed.data),
+  ]);
+  const usdt = usdtResult.status === "fulfilled" ? usdtResult.value.value : null;
+  const usdtSource =
+    usdtResult.status === "fulfilled" ? usdtResult.value.source : null;
+  const gold = goldResult.status === "fulfilled" ? goldResult.value : null;
+  if (usdtResult.status === "rejected")
+    console.error("All tether price lookups failed:", usdtResult.reason);
+  if (goldResult.status === "rejected")
+    console.error("Gold price lookup failed:", goldResult.reason);
+  return {
+    ok: true as const,
+    usdt,
+    usdtSource,
+    gold,
+    usdtError:
+      usdtResult.status === "rejected"
+        ? "دریافت نرخ تتر از نوبیتکس و داده‌های TGJU ناموفق بود."
+        : usdt === null
+          ? "برای این تاریخ قیمت تتر ثبت نشده است."
+          : null,
+    goldError:
+      goldResult.status === "rejected"
+        ? "دریافت قیمت طلا ناموفق بود."
+        : gold === null
+          ? "برای این تاریخ قیمت طلا ثبت نشده است."
+          : null,
+  };
+}
 function failure(error: unknown): ActionResult {
   console.error("Price mutation failed:", error);
   return {
@@ -28,13 +66,14 @@ export async function saveRecord(
     if (original && !idSchema.safeParse(original.id).success)
       return { ok: false, error: "شناسه نامعتبر است." };
     const v = parsed.data;
+    const db = database();
+    const rateColumn = await priceColumn(db);
     const payload = {
       record_date: gregorian(v.date),
       apartment_price_toman: v.apartment,
-      usd_price_toman: v.usd,
+      [rateColumn]: v.usdt,
       gold_18k_price_toman: v.gold,
     };
-    const db = database();
     let query = original
       ? db
           .from("divergence_monitor_project_price_records")
@@ -46,9 +85,9 @@ export async function saveRecord(
         .eq("record_date", original.record_date)
         .eq("apartment_price_toman", original.apartment_price_toman);
       query =
-        original.usd_price_toman === null
-          ? query.is("usd_price_toman", null)
-          : query.eq("usd_price_toman", original.usd_price_toman);
+        original.usdt_price_toman === null
+          ? query.is(rateColumn, null)
+          : query.eq(rateColumn, original.usdt_price_toman);
       query =
         original.gold_18k_price_toman === null
           ? query.is("gold_18k_price_toman", null)
@@ -59,7 +98,7 @@ export async function saveRecord(
       if (error.code === "23505")
         return {
           ok: false,
-          error: "برای این تاریخ قبلاً اطلاعات ثبت شده است.",
+          error: "محدودیت قدیمی دیتابیس هنوز اجازهٔ ثبت دوبارهٔ این تاریخ را نمی‌دهد.",
         };
       console.error(error);
       return { ok: false, error: "ذخیره اطلاعات در پایگاه داده ناموفق بود." };
@@ -83,16 +122,18 @@ export async function deleteRecord(
     await requireAccess();
     if (!idSchema.safeParse(original.id).success)
       return { ok: false, error: "شناسه نامعتبر است." };
-    let query = database()
+    const db = database();
+    const rateColumn = await priceColumn(db);
+    let query = db
       .from("divergence_monitor_project_price_records")
       .delete()
       .eq("id", original.id)
       .eq("record_date", original.record_date)
       .eq("apartment_price_toman", original.apartment_price_toman);
     query =
-      original.usd_price_toman === null
-        ? query.is("usd_price_toman", null)
-        : query.eq("usd_price_toman", original.usd_price_toman);
+      original.usdt_price_toman === null
+        ? query.is(rateColumn, null)
+        : query.eq(rateColumn, original.usdt_price_toman);
     query =
       original.gold_18k_price_toman === null
         ? query.is("gold_18k_price_toman", null)

@@ -40,7 +40,7 @@ export function RecordsTable({
               {[
                 "تاریخ",
                 "قیمت هر متر مربع (تومان)",
-                "قیمت دلار (تومان)",
+                "قیمت تتر (تومان)",
                 "قیمت هر گرم طلا (تومان)",
                 "عملیات",
               ].map((h) => (
@@ -65,9 +65,9 @@ export function RecordsTable({
                   {number(r.apartment_price_toman, 0)}
                 </TableCell>
                 <TableCell>
-                  {r.usd_price_toman === null
+                  {r.usdt_price_toman === null
                     ? "—"
-                    : number(r.usd_price_toman, 0)}
+                    : number(r.usdt_price_toman, 0)}
                 </TableCell>
                 <TableCell>
                   {r.gold_18k_price_toman === null

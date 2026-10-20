@@ -487,6 +487,23 @@ td {
 .form-field {
   margin-top: 17px;
 }
+.market-lookup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 14px;
+}
+.market-lookup small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.fallback-notice {
+  width: 100%;
+  margin: 0;
+  color: #a35a19;
+  font-size: 12px;
+}
 .input {
   width: 100%;
   border: 1px solid #dce5df;
@@ -559,7 +576,7 @@ td {
   padding: 7px;
   font-size: 12px;
 }
-.calendar-grid button:hover {
+.calendar-grid button:not(:disabled):hover {
   background: #edf3ef;
 }
 .calendar-grid .selected {

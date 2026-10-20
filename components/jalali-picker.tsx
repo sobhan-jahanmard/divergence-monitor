@@ -10,7 +10,7 @@ import {
 } from "date-fns-jalali";
 import { faIR } from "date-fns-jalali/locale";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { digits, gregorian, localDate, today } from "@/lib/date";
+import { digits, gregorian, localDate, tehranToday, today } from "@/lib/date";
 import { number } from "@/lib/format";
 import { Button, Input } from "./ui";
 export function JalaliPicker({
@@ -23,9 +23,13 @@ export function JalaliPicker({
   invalid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() =>
-    startOfMonth(localDate(gregorian(value) || gregorian(today())!)),
-  );
+  const [month, setMonth] = useState(() => {
+    const selected = gregorian(value);
+    const current = tehranToday();
+    return startOfMonth(localDate(selected && selected <= current ? selected : current));
+  });
+  const currentDay = today();
+  const currentMonth = currentDay.slice(0, 7);
   const first = (getDay(month) + 1) % 7;
   return (
     <div>
@@ -69,6 +73,7 @@ export function JalaliPicker({
               type="button"
               variant="ghost"
               aria-label="ماه بعد"
+              disabled={format(month, "yyyy/MM") >= currentMonth}
               onClick={() => setMonth(addMonths(month, 1))}
             >
               <ChevronLeft size={16} />
@@ -88,6 +93,7 @@ export function JalaliPicker({
                   type="button"
                   className={date === value ? "selected" : ""}
                   key={i}
+                  disabled={date > currentDay}
                   onClick={() => {
                     onChange(date);
                     setOpen(false);
