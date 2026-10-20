@@ -34,8 +34,11 @@ export async function saveRecord(
     };
     const db = database();
     let query = original
-      ? db.from("price_records").update(payload).eq("id", original.id)
-      : db.from("price_records").insert(payload);
+      ? db
+          .from("divergence_monitor_project_price_records")
+          .update(payload)
+          .eq("id", original.id)
+      : db.from("divergence_monitor_project_price_records").insert(payload);
     if (original) {
       query = query
         .eq("record_date", original.record_date)
@@ -78,7 +81,7 @@ export async function deleteRecord(
     if (!idSchema.safeParse(original.id).success)
       return { ok: false, error: "شناسه نامعتبر است." };
     let query = database()
-      .from("price_records")
+      .from("divergence_monitor_project_price_records")
       .delete()
       .eq("id", original.id)
       .eq("record_date", original.record_date)

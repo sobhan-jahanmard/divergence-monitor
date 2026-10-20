@@ -46,3 +46,5 @@ npm run build
 Tests cover per-record conversions, independent null averages, Jalali month/year boundaries, date validation, safe integer amounts, previous valid values, and URL page validation. Live CRUD verification requires your configured Supabase project and migration; no external database is provisioned by this repository.
 
 Dependency audit: production dependencies have no reported advisories at implementation time. The development-only Next.js ESLint toolchain currently has transitive glob/braces advisories with no compatible upstream fix; it is not part of the production server.
+
+This app uses only the dedicated table `public.divergence_monitor_project_price_records` and can share a Supabase project with other applications. No other tables or services are required.

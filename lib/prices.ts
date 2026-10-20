@@ -28,7 +28,7 @@ export async function allRecords() {
   const result: PriceRecord[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
-      .from("price_records")
+      .from("divergence_monitor_project_price_records")
       .select(columns)
       .order("record_date")
       .range(from, from + 999);
@@ -44,13 +44,13 @@ export async function allRecords() {
 export async function paginatedRecords(page: number) {
   const db = database();
   const { count, error } = await db
-    .from("price_records")
+    .from("divergence_monitor_project_price_records")
     .select("id", { count: "exact", head: true });
   if (error) throw new Error("دریافت تعداد رکوردها ناموفق بود.");
   const total = count ?? 0;
   const current = Math.min(page, Math.max(1, Math.ceil(total / 10)));
   const { data, error: err } = await db
-    .from("price_records")
+    .from("divergence_monitor_project_price_records")
     .select(columns)
     .order("record_date", { ascending: false })
     .range((current - 1) * 10, current * 10 - 1);

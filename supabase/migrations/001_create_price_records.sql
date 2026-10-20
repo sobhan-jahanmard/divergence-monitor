@@ -1,4 +1,4 @@
-create table public.price_records (
+create table public.divergence_monitor_project_price_records (
  id uuid primary key default gen_random_uuid(),
  record_date date not null unique,
  apartment_price_toman bigint not null check (apartment_price_toman > 0 and apartment_price_toman <= 9007199254740991),
@@ -7,6 +7,6 @@ create table public.price_records (
  created_at timestamptz not null default now()
 );
 -- Browser/anonymous database access is disabled. Public app writes go through validated Server Actions.
-alter table public.price_records enable row level security;
-revoke all on public.price_records from anon, authenticated;
-grant select, insert, update, delete on public.price_records to service_role;
+alter table public.divergence_monitor_project_price_records enable row level security;
+revoke all on public.divergence_monitor_project_price_records from anon, authenticated;
+grant select, insert, update, delete on public.divergence_monitor_project_price_records to service_role;
