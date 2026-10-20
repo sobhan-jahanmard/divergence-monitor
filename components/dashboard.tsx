@@ -67,11 +67,7 @@ function Chart({
         <span className="unit-label">{metric.unit}</span>
       </div>
       <div className="chart-stats">
-        <strong>
-          {latest === null
-            ? "—"
-            : number(latest, metric.key === "toman" ? 0 : 2)}
-        </strong>
+        <strong>{latest === null ? "—" : number(latest, 2)}</strong>
         <span className="stat-unit">{metric.unit}</span>
         {change !== null && (
           <span className={`change ${change >= 0 ? "up" : "down"}`}>
@@ -125,7 +121,7 @@ function Chart({
                 axisLine={false}
                 width={74}
                 tick={{ fill: "#88938f", fontSize: 11 }}
-                tickFormatter={(v) => number(v, metric.key === "toman" ? 0 : 2)}
+                tickFormatter={(v) => number(v, 2)}
                 domain={["auto", "auto"]}
               />
               <Tooltip
@@ -135,10 +131,7 @@ function Chart({
                     <div className="chart-tooltip" dir="rtl">
                       <small>{digitsFa(String(label))}</small>
                       <strong>
-                        {new Intl.NumberFormat("fa-IR", {
-                          maximumSignificantDigits: 17,
-                        }).format(Number(val))}{" "}
-                        {metric.unit}
+                        {number(Number(val), 2)} {metric.unit}
                       </strong>
                     </div>
                   ) : null;
@@ -178,7 +171,7 @@ function digitsFa(s: string) {
   return s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 export function Dashboard({ records }: { records: PriceRecord[] }) {
-  const [mode, setMode] = useState<Aggregation>("monthly");
+  const [mode, setMode] = useState<Aggregation>("daily");
   const points = aggregate(records, mode);
   return (
     <>
