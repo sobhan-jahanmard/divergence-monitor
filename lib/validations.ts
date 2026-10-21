@@ -13,18 +13,30 @@ const optional = z
   .transform((v) => v.trim())
   .transform((v) => (v === "" ? null : v))
   .pipe(z.union([z.null(), money]));
+export const itemNameSchema = z
+  .string()
+  .trim()
+  .min(1, "نام مورد را وارد کنید")
+  .max(120, "نام مورد باید حداکثر ۱۲۰ نویسه باشد");
 export const priceSchema = z.object({
+  itemId: z.uuid({ error: "مورد را از فهرست انتخاب کنید" }),
   date: z
     .string()
     .transform(digits)
     .superRefine((value, context) => {
       const date = gregorian(value);
       if (date === null)
-        context.addIssue({ code: "custom", message: "تاریخ شمسی معتبر وارد کنید" });
+        context.addIssue({
+          code: "custom",
+          message: "تاریخ شمسی معتبر وارد کنید",
+        });
       else if (date > tehranToday())
-        context.addIssue({ code: "custom", message: "تاریخ آینده قابل انتخاب نیست" });
+        context.addIssue({
+          code: "custom",
+          message: "تاریخ آینده قابل انتخاب نیست",
+        });
     }),
-  apartment: money,
+  price: money,
   usdt: optional,
   gold: optional,
 });

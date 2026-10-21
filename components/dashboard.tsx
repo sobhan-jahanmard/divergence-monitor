@@ -19,25 +19,25 @@ import {
 } from "lucide-react";
 import { aggregate, latestChange, type Point } from "@/lib/metrics";
 import { number } from "@/lib/format";
-import type { PriceRecord, Aggregation } from "@/lib/types";
+import type { PriceItem, PriceRecord, Aggregation } from "@/lib/types";
 const metrics = [
   {
     key: "toman",
-    title: "قیمت هر متر مربع به تومان",
+    title: "قیمت به تومان",
     unit: "تومان",
     color: "#216d5b",
     icon: Building2,
   },
   {
     key: "usdt",
-    title: "قیمت هر متر مربع به تتر",
+    title: "قیمت به تتر",
     unit: "تتر",
     color: "#5375bb",
     icon: CircleDollarSign,
   },
   {
     key: "gold",
-    title: "قیمت هر متر مربع به گرم طلا",
+    title: "قیمت به گرم طلا",
     unit: "گرم طلای ۱۸ عیار",
     color: "#b18b41",
     icon: Coins,
@@ -91,7 +91,7 @@ function Chart({
               ? "تتر"
               : metric.key === "gold"
                 ? "طلا"
-                : "مسکن"}{" "}
+                : "مورد انتخاب‌شده"}{" "}
             را ثبت کنید.
           </small>
         </div>
@@ -159,10 +159,10 @@ function Chart({
       <div className="chart-footer">
         <span className="legend-dot" style={{ background: metric.color }} />
         {metric.key === "toman"
-          ? "قیمت ثبت‌شده مسکن"
+          ? "قیمت ثبت‌شده مورد انتخاب‌شده"
           : metric.key === "usdt"
-            ? "قیمت مسکن ÷ قیمت هر تتر"
-            : "قیمت مسکن ÷ قیمت هر گرم طلای ۱۸ عیار"}
+            ? "قیمت مورد ÷ قیمت هر تتر"
+            : "قیمت مورد ÷ قیمت هر گرم طلای ۱۸ عیار"}
       </div>
     </section>
   );
@@ -170,16 +170,28 @@ function Chart({
 function digitsFa(s: string) {
   return s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
-export function Dashboard({ records }: { records: PriceRecord[] }) {
+export function Dashboard({ records, items }: { records: PriceRecord[]; items: PriceItem[] }) {
   const [mode, setMode] = useState<Aggregation>("daily");
-  const points = aggregate(records, mode);
+  const [selectedItemId, setSelectedItemId] = useState(items[0]?.id ?? "");
+  const selectedRecords = records.filter((record) => record.item_id === selectedItemId);
+  const points = aggregate(selectedRecords, mode);
   return (
     <>
+      <div className="item-selector">
+        <label htmlFor="dashboard-item">نمودار کدام مورد را می‌خواهید ببینید؟</label>
+        <select
+          id="dashboard-item"
+          value={selectedItemId}
+          onChange={(event) => setSelectedItemId(event.target.value)}
+        >
+          {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </div>
       <div className="dashboard-toolbar">
         <div>
           <h2>روند تاریخی قیمت‌ها</h2>
           <p>
-            {number(records.length, 0)} رکورد ثبت‌شده <span>·</span>{" "}
+            {number(selectedRecords.length, 0)} رکورد ثبت‌شده <span>·</span>{" "}
             {mode === "daily"
               ? "مقادیر روزانه"
               : "میانگین " + (mode === "monthly" ? "ماهانه" : "سالانه")}

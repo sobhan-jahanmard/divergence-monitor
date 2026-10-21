@@ -11,12 +11,12 @@ export function convert(r: PriceRecord): Point {
   return {
     date: r.record_date,
     label: jalali(r.record_date),
-    toman: r.apartment_price_toman,
+    toman: r.price_toman,
     usdt: r.usdt_price_toman
-      ? r.apartment_price_toman / r.usdt_price_toman
+      ? r.price_toman / r.usdt_price_toman
       : null,
     gold: r.gold_18k_price_toman
-      ? r.apartment_price_toman / r.gold_18k_price_toman
+      ? r.price_toman / r.gold_18k_price_toman
       : null,
   };
 }

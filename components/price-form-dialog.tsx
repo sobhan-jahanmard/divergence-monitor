@@ -1,15 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Pencil, LoaderCircle, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { priceSchema } from "@/lib/validations";
+import { itemNameSchema, priceSchema } from "@/lib/validations";
 import { digits, gregorian, jalali, today } from "@/lib/date";
-import type { PriceRecord } from "@/lib/types";
-import { lookupMarketPrices, saveRecord } from "@/app/actions";
+import type { PriceItem, PriceRecord } from "@/lib/types";
+import { createItem, lookupMarketPrices, saveRecord } from "@/app/actions";
 import {
   Button,
   Input,
@@ -22,29 +22,94 @@ import {
 import { JalaliPicker } from "./jalali-picker";
 type Values = z.input<typeof priceSchema>;
 const labels = {
-  apartment: "قیمت هر متر مربع آپارتمان (تومان)",
+  price: "قیمت مورد (تومان)",
   usdt: "قیمت هر تتر (تومان)",
   gold: "قیمت هر گرم طلای ۱۸ عیار (تومان)",
 } as const;
-export function PriceFormDialog({ record }: { record?: PriceRecord }) {
+export function PriceFormDialog({
+  record,
+  items,
+}: {
+  record?: PriceRecord;
+  items: PriceItem[];
+}) {
   const [open, setOpen] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [creatingItem, setCreatingItem] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemError, setNewItemError] = useState("");
+  const [addedItems, setAddedItems] = useState<PriceItem[]>([]);
+  const [lookupAttempted, setLookupAttempted] = useState(false);
   const [usdtSource, setUsdtSource] = useState<
     "nobitex" | "tgju-usdt" | "tgju-usd" | null
   >(null);
+  const itemSelectId = useId();
+  const newItemInputId = useId();
   const router = useRouter();
+  const availableItems = [
+    ...items,
+    ...addedItems.filter(
+      (added) => !items.some((item) => item.id === added.id),
+    ),
+  ];
+  const selectedItemId =
+    record?.item_id ??
+    items.find((item) => item.name === "هر متر مربع آپارتمان ۱۰۰ متری پیام")
+      ?.id ??
+    items[0]?.id ??
+    "";
   const form = useForm<Values, unknown, z.output<typeof priceSchema>>({
     resolver: zodResolver(priceSchema),
     defaultValues: {
       date: record ? jalali(record.record_date) : today(),
-      apartment: record ? String(record.apartment_price_toman) : "",
+      itemId: selectedItemId,
+      price: record ? String(record.price_toman) : "",
       usdt: record?.usdt_price_toman ? String(record.usdt_price_toman) : "",
       gold: record?.gold_18k_price_toman
         ? String(record.gold_18k_price_toman)
         : "",
     },
   });
-  const busy = form.formState.isSubmitting || fetching;
+  const busy = form.formState.isSubmitting || fetching || creatingItem;
+  async function addItem() {
+    if (creatingItem) return;
+    const parsed = itemNameSchema.safeParse(newItemName);
+    if (!parsed.success) {
+      setNewItemError(parsed.error.issues[0].message);
+      return;
+    }
+    setCreatingItem(true);
+    setNewItemError("");
+    try {
+      const result = await createItem(parsed.data);
+      if (!result.ok) {
+        setNewItemError(result.error);
+        return;
+      }
+      setAddedItems((current) =>
+        current.some((item) => item.id === result.item.id)
+          ? current
+          : [...current, result.item],
+      );
+      form.setValue("itemId", result.item.id, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+      setAddingItem(false);
+      setNewItemName("");
+      toast.success(
+        result.created
+          ? "مورد جدید اضافه و انتخاب شد."
+          : "این مورد از قبل وجود داشت و انتخاب شد.",
+      );
+      router.refresh();
+    } catch {
+      setNewItemError("ارتباط با سرور ناموفق بود.");
+    } finally {
+      setCreatingItem(false);
+    }
+  }
   async function fillMarketPrices(onlyMissing = false) {
     const date = digits(form.getValues("date"));
     if (!gregorian(date)) {
@@ -53,6 +118,7 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
     }
     const needUsdt = !onlyMissing || !form.getValues("usdt").trim();
     const needGold = !onlyMissing || !form.getValues("gold").trim();
+    if (onlyMissing) setLookupAttempted(true);
     setFetching(true);
     try {
       const result = await lookupMarketPrices(date);
@@ -78,7 +144,8 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
       if (errors.length) toast.warning(errors.join(" "));
       else if (needUsdt && result.usdtSource === "tgju-usdt")
         toast.success("نرخ تتر از TGJU دریافت شد؛ مقدار را بررسی کنید.");
-      else toast.success("قیمت‌ها دریافت شد؛ مقدارها را بررسی و سپس ذخیره کنید.");
+      else
+        toast.success("قیمت‌ها دریافت شد؛ مقدارها را بررسی و سپس ذخیره کنید.");
     } catch {
       toast.error("ارتباط با سرور برای دریافت قیمت‌ها ناموفق بود.");
     } finally {
@@ -93,9 +160,14 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
           setOpen(v);
           if (v) {
             setUsdtSource(null);
+            setLookupAttempted(false);
+            setAddingItem(false);
+            setNewItemName("");
+            setNewItemError("");
             form.reset({
               date: record ? jalali(record.record_date) : today(),
-              apartment: record ? String(record.apartment_price_toman) : "",
+              itemId: selectedItemId,
+              price: record ? String(record.price_toman) : "",
               usdt: record?.usdt_price_toman
                 ? String(record.usdt_price_toman)
                 : "",
@@ -129,11 +201,19 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
           {record ? "ویرایش اطلاعات" : "ثبت قیمت جدید"}
         </DialogTitle>
         <DialogDescription className="muted">
-          قیمت‌ها به تومان هستند. اگر نرخ تتر یا طلا خالی باشد، ابتدا قیمت همان تاریخ دریافت می‌شود.
+          قیمت‌ها به تومان هستند. مورد را از فهرست انتخاب کنید یا با دکمهٔ +
+          مورد جدید بسازید.
         </DialogDescription>
         <form
           onSubmit={form.handleSubmit(async () => {
-            if (!form.getValues("usdt").trim() || !form.getValues("gold").trim()) {
+            if (addingItem) {
+              toast.error("ابتدا مورد جدید را اضافه کنید یا انصراف دهید.");
+              return;
+            }
+            if (
+              !lookupAttempted &&
+              (!form.getValues("usdt").trim() || !form.getValues("gold").trim())
+            ) {
               await fillMarketPrices(true);
               return;
             }
@@ -151,6 +231,105 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
           className="form"
         >
           <fieldset disabled={busy}>
+            <div className="form-field item-field">
+              <label htmlFor={itemSelectId}>
+                مورد <span className="required">*</span>
+              </label>
+              <div className="item-picker">
+                <Controller
+                  name="itemId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <select
+                      {...field}
+                      id={itemSelectId}
+                      className="input item-select"
+                      aria-invalid={!!form.formState.errors.itemId}
+                    >
+                      <option value="" disabled>
+                        مورد را انتخاب کنید
+                      </option>
+                      {availableItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="item-add-button"
+                  aria-label="ساخت مورد جدید"
+                  title="ساخت مورد جدید"
+                  aria-expanded={addingItem}
+                  onClick={() => {
+                    setAddingItem(!addingItem);
+                    if (addingItem) setNewItemName("");
+                    setNewItemError("");
+                  }}
+                >
+                  <Plus size={20} />
+                </Button>
+              </div>
+              {form.formState.errors.itemId && (
+                <p className="field-error">
+                  {form.formState.errors.itemId.message}
+                </p>
+              )}
+              {addingItem && (
+                <div className="new-item-panel">
+                  <label htmlFor={newItemInputId}>نام مورد جدید</label>
+                  <Input
+                    id={newItemInputId}
+                    value={newItemName}
+                    onChange={(event) => {
+                      setNewItemName(event.target.value);
+                      setNewItemError("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void addItem();
+                      }
+                    }}
+                    placeholder="مثلاً قیمت ملک مسکونی در پیام"
+                    aria-invalid={!!newItemError}
+                    autoFocus
+                  />
+                  {newItemError && (
+                    <p className="field-error" role="alert">
+                      {newItemError}
+                    </p>
+                  )}
+                  <div className="new-item-actions">
+                    <Button
+                      type="button"
+                      onClick={addItem}
+                      disabled={creatingItem}
+                    >
+                      {creatingItem && (
+                        <LoaderCircle size={16} className="spin" />
+                      )}
+                      افزودن مورد
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setAddingItem(false);
+                        setNewItemName("");
+                        setNewItemError("");
+                      }}
+                      disabled={creatingItem}
+                    >
+                      انصراف
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
             <label>
               تاریخ <span className="required">*</span>
             </label>
@@ -165,6 +344,7 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
                       form.setValue("usdt", "");
                       form.setValue("gold", "");
                       setUsdtSource(null);
+                      setLookupAttempted(false);
                     }
                     field.onChange(value);
                   }}
@@ -178,7 +358,11 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
               </p>
             )}
             <div className="market-lookup">
-              <Button type="button" variant="outline" onClick={() => fillMarketPrices()}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fillMarketPrices()}
+              >
                 {fetching ? (
                   <LoaderCircle size={16} className="spin" />
                 ) : (
@@ -189,7 +373,8 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
               <small>تتر: نوبیتکس ← تتر TGJU ← دلار TGJU · طلا: TGJU</small>
               {usdtSource === "tgju-usd" && (
                 <p className="fallback-notice" role="status">
-                  این عدد نرخ دلار آزاد TGJU است و ممکن است با قیمت تتر فرق داشته باشد.
+                  این عدد نرخ دلار آزاد TGJU است و ممکن است با قیمت تتر فرق
+                  داشته باشد.
                 </p>
               )}
             </div>
@@ -197,7 +382,7 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
               <div className="form-field" key={key}>
                 <label htmlFor={key}>
                   {labels[key]}{" "}
-                  {key === "apartment" ? (
+                  {key === "price" ? (
                     <span className="required">*</span>
                   ) : (
                     <span className="optional">دستی یا از API</span>
@@ -232,9 +417,20 @@ export function PriceFormDialog({ record }: { record?: PriceRecord }) {
                 )}
               </div>
             ))}
+            <div className="form-field">
+              <label htmlFor="recorded-by">
+                ثبت‌کننده <span className="required">*</span>
+              </label>
+              <Input
+                id="recorded-by"
+                value="sobhan"
+                readOnly
+                className="readonly-input"
+              />
+            </div>
           </fieldset>
           <div className="dialog-actions">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || addingItem}>
               {busy && <LoaderCircle size={16} className="spin" />}
               {record ? "ذخیره تغییرات" : "ثبت اطلاعات"}
             </Button>

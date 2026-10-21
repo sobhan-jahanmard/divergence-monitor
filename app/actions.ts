@@ -2,12 +2,59 @@
 import { requireAccess } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { database } from "@/lib/supabase/server";
-import { priceSchema, idSchema } from "@/lib/validations";
+import { priceSchema, idSchema, itemNameSchema } from "@/lib/validations";
 import { gregorian } from "@/lib/date";
-import type { PriceRecord } from "@/lib/types";
+import type { PriceItem, PriceRecord } from "@/lib/types";
 import { fetchGold, fetchTetherRate } from "@/lib/market-prices";
 import { priceColumn } from "@/lib/supabase/price-column";
+import type { SupabaseClient } from "@supabase/supabase-js";
 type ActionResult = { ok: true } | { ok: false; error: string };
+type ItemActionResult =
+  | { ok: true; item: PriceItem; created: boolean }
+  | { ok: false; error: string };
+async function resolveItem(
+  db: SupabaseClient,
+  name: string,
+): Promise<{ item: PriceItem; created: boolean }> {
+  const table = db.from("divergence_monitor_project_price_items");
+  const { data: items, error } = await table.select("id,name");
+  if (error)
+    throw new Error(
+      "دریافت فهرست موارد ناموفق بود. آیا مهاجرت ۰۰۴ اجرا شده است؟",
+    );
+  const existing = items.find(
+    (item) => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),
+  );
+  if (existing) return { item: existing as PriceItem, created: false };
+  const { data, error: insertError } = await table
+    .insert({ name })
+    .select("id,name")
+    .single();
+  if (!insertError) return { item: data as PriceItem, created: true };
+  if (insertError.code === "23505") {
+    const { data: concurrent } = await table.select("id,name");
+    const match = concurrent?.find(
+      (item) =>
+        item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),
+    );
+    if (match) return { item: match as PriceItem, created: false };
+  }
+  throw new Error("ساخت مورد جدید ناموفق بود.");
+}
+export async function createItem(input: unknown): Promise<ItemActionResult> {
+  try {
+    await requireAccess();
+    const parsed = itemNameSchema.safeParse(input);
+    if (!parsed.success)
+      return { ok: false, error: parsed.error.issues[0].message };
+    const result = await resolveItem(database(), parsed.data);
+    revalidatePath("/");
+    revalidatePath("/records");
+    return { ok: true, ...result };
+  } catch (error) {
+    return failure(error);
+  }
+}
 export async function lookupMarketPrices(date: string) {
   await requireAccess();
   const parsed = priceSchema.shape.date.safeParse(date);
@@ -17,7 +64,8 @@ export async function lookupMarketPrices(date: string) {
     fetchTetherRate(parsed.data),
     fetchGold(parsed.data),
   ]);
-  const usdt = usdtResult.status === "fulfilled" ? usdtResult.value.value : null;
+  const usdt =
+    usdtResult.status === "fulfilled" ? usdtResult.value.value : null;
   const usdtSource =
     usdtResult.status === "fulfilled" ? usdtResult.value.source : null;
   const gold = goldResult.status === "fulfilled" ? goldResult.value : null;
@@ -44,7 +92,7 @@ export async function lookupMarketPrices(date: string) {
           : null,
   };
 }
-function failure(error: unknown): ActionResult {
+function failure(error: unknown): { ok: false; error: string } {
   console.error("Price mutation failed:", error);
   return {
     ok: false,
@@ -69,10 +117,12 @@ export async function saveRecord(
     const db = database();
     const rateColumn = await priceColumn(db);
     const payload = {
+      item_id: v.itemId,
       record_date: gregorian(v.date),
-      apartment_price_toman: v.apartment,
+      price_toman: v.price,
       [rateColumn]: v.usdt,
       gold_18k_price_toman: v.gold,
+      recorded_by: "sobhan",
     };
     let query = original
       ? db
@@ -83,7 +133,8 @@ export async function saveRecord(
     if (original) {
       query = query
         .eq("record_date", original.record_date)
-        .eq("apartment_price_toman", original.apartment_price_toman);
+        .eq("item_id", original.item_id)
+        .eq("price_toman", original.price_toman);
       query =
         original.usdt_price_toman === null
           ? query.is(rateColumn, null)
@@ -95,10 +146,16 @@ export async function saveRecord(
     }
     const { data, error } = await query.select("id");
     if (error) {
+      if (error.code === "23503")
+        return {
+          ok: false,
+          error: "مورد انتخاب‌شده دیگر وجود ندارد؛ صفحه را تازه کنید.",
+        };
       if (error.code === "23505")
         return {
           ok: false,
-          error: "محدودیت قدیمی دیتابیس هنوز اجازهٔ ثبت دوبارهٔ این تاریخ را نمی‌دهد.",
+          error:
+            "محدودیت قدیمی دیتابیس هنوز اجازهٔ ثبت دوبارهٔ این تاریخ را نمی‌دهد.",
         };
       console.error(error);
       return { ok: false, error: "ذخیره اطلاعات در پایگاه داده ناموفق بود." };
@@ -129,7 +186,8 @@ export async function deleteRecord(
       .delete()
       .eq("id", original.id)
       .eq("record_date", original.record_date)
-      .eq("apartment_price_toman", original.apartment_price_toman);
+      .eq("item_id", original.item_id)
+      .eq("price_toman", original.price_toman);
     query =
       original.usdt_price_toman === null
         ? query.is(rateColumn, null)

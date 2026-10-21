@@ -1,9 +1,12 @@
 export type PriceRecord = {
   id: string;
+  item_id: string;
   record_date: string;
-  apartment_price_toman: number;
+  price_toman: number;
   usdt_price_toman: number | null;
   gold_18k_price_toman: number | null;
+  recorded_by: string;
   created_at: string;
 };
+export type PriceItem = { id: string; name: string };
 export type Aggregation = "daily" | "monthly" | "yearly";

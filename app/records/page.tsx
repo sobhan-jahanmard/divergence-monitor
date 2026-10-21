@@ -4,7 +4,7 @@ import { RetryButton } from "@/components/retry-button";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/header";
 import { RecordsTable } from "@/components/records-table";
-import { paginatedRecords } from "@/lib/prices";
+import { allItems, paginatedRecords } from "@/lib/prices";
 import { pageNumber } from "@/lib/metrics";
 export const dynamic = "force-dynamic";
 export default async function Records({
@@ -16,8 +16,9 @@ export default async function Records({
   const params = await searchParams;
   const page = pageNumber(params.page);
   let result;
+  let items;
   try {
-    result = await paginatedRecords(page);
+    [result, items] = await Promise.all([paginatedRecords(page), allItems()]);
   } catch (error) {
     return (
       <main className="shell">
@@ -39,9 +40,10 @@ export default async function Records({
     redirect(`/records?page=${result.current}`);
   return (
     <main className="shell">
-      <Header records />
+      <Header records items={items} />
       <RecordsTable
         records={result.records}
+        items={items}
         total={result.total}
         page={result.current}
       />

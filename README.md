@@ -1,13 +1,13 @@
-# خانه‌نما — Ghasem Abad apartment price tracker
+# خانه‌نما — Price tracker
 
-A two-page Persian RTL Next.js application. All stored prices are **Toman**, never Rial. Apartment prices are entered manually; historical USDT and 18K gold prices can be filled from market data.
+A two-page Persian RTL Next.js application for tracking named price items. All stored prices are **Toman**, never Rial. Item prices are entered manually; historical USDT and 18K gold prices can be filled from market data.
 
 ## Setup
 
 Requires Node.js 20.19+ and npm.
 
 1. Run `npm ci`.
-2. Create a Supabase project. In its SQL editor run `supabase/migrations/001_create_price_records.sql`, `002_rename_usd_to_usdt.sql`, and `003_allow_duplicate_record_dates.sql` in order (or apply them with the Supabase CLI). Existing deployments need migrations `002` and `003`.
+2. Create a Supabase project. In its SQL editor run migrations `001` through `004` from `supabase/migrations/` in order (or apply them with the Supabase CLI). Existing deployments need any migrations not yet applied, including `004_add_price_items_and_recorders.sql` for item selection and recorder tracking.
 3. Copy `.env.example` to `.env.local` and set:
    - `NEXT_PUBLIC_SUPABASE_URL`: your Supabase project URL.
    - `SUPABASE_SERVICE_ROLE_KEY`: the project's service role key. **Server only**; never prefix this key with `NEXT_PUBLIC_`.
@@ -27,6 +27,7 @@ Anyone with the shared password can view, add, edit, or delete records. Database
 
 - Database dates are Gregorian `DATE`; the calendar picker, chart groups, and labels use Jalali dates. Dates after today in Tehran are disabled in the picker and rejected by server validation.
 - Multiple records can share a date after migration `003` removes the old unique constraint. The records table orders same-day entries by creation time and ID; daily charts retain each entry.
+- Migration `004` adds a named item catalog and assigns existing records to «هر متر مربع آپارتمان ۱۰۰ متری پیام». The form selects an existing item from a dropdown; the adjacent + button creates and selects a new item immediately. The dashboard selector filters charts to one item. Every record has a nonempty recorder; existing and new records use `sobhan` for now.
 - Positive whole Toman amounts are limited to JavaScript's safe integer maximum (9,007,199,254,740,991) in both Zod and SQL. PostgreSQL BIGINT supports larger values, but those are intentionally rejected to avoid silent precision loss in JSON/JavaScript. Derived ratios use floating point, with formatting only at display time.
 - USDT and gold ratios are calculated for each record before aggregation. Monthly/yearly means exclude null rates independently. No interpolation or synthetic records are added; daily lines do not connect across null conversions.
 - The form's market lookup requests a daily `USDTIRT` close from Nobitex for the selected Tehran date and converts Rial to Toman. If Nobitex is unavailable or has no candle, it tries TGJU's historical `USDT_IRR` rate, then TGJU's free-market `USD_IRR_FREE` rate as a proxy; the form warns when it uses USD because USD and USDT can differ. Gold uses TGJU's `GOLD_18K_IRR` data. These are online JSON files from Iran Market Data, not files stored in this project: historical files are cached for up to one hour, while today's fresh snapshot is preferred and cached for up to five minutes. A snapshot is accepted only for the matching Tehran date. If a rate is blank when Save is clicked, the form fetches missing rates first and shows them for review; clicking Save again writes the record. Nobitex may reject requests from some server locations (HTTP 403); the TGJU sources provide a fallback.
@@ -54,4 +55,4 @@ Tests cover per-record conversions, independent null averages, Jalali month/year
 
 Dependency audit: production dependencies have no reported advisories at implementation time. The development-only Next.js ESLint toolchain currently has transitive glob/braces advisories with no compatible upstream fix; it is not part of the production server.
 
-This app uses only the dedicated table `public.divergence_monitor_project_price_records` and can share a Supabase project with other applications. Manual entry works without the market data services; automatic lookup depends on Nobitex and Iran Market Data availability.
+This app uses only the dedicated `public.divergence_monitor_project_price_records` and `public.divergence_monitor_project_price_items` tables and can share a Supabase project with other applications. Manual entry works without the market data services; automatic lookup depends on Nobitex and Iran Market Data availability.

@@ -17,7 +17,8 @@ body {
   font-size: 14px;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button,
@@ -179,6 +180,29 @@ h2 {
   padding: 22px 0;
   border-top: 1px solid var(--border);
   gap: 16px;
+}
+.item-selector {
+  display: grid;
+  gap: 8px;
+  padding: 18px 0 22px;
+}
+.item-selector label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.item-selector select {
+  width: min(100%, 460px);
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: white;
+  color: var(--foreground);
+}
+.item-selector select:focus-visible,
+input:focus-visible {
+  outline: 3px solid #8bc7b5;
+  outline-offset: 2px;
 }
 .dashboard-toolbar p {
   font-size: 11px;
@@ -486,6 +510,43 @@ td {
 }
 .form-field {
   margin-top: 17px;
+}
+.item-field {
+  margin-top: 0;
+  margin-bottom: 17px;
+}
+.item-picker {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.item-select {
+  min-width: 0;
+  flex: 1;
+  min-height: 46px;
+  cursor: pointer;
+}
+.item-add-button {
+  width: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0;
+}
+.new-item-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #f8faf9;
+}
+.new-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.readonly-input {
+  background: #f6f8f7;
+  color: #53675d;
 }
 .market-lookup {
   display: flex;

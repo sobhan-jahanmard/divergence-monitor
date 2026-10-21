@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Database } from "lucide-react";
 import { jalali } from "@/lib/date";
 import { number } from "@/lib/format";
-import type { PriceRecord } from "@/lib/types";
+import type { PriceItem, PriceRecord } from "@/lib/types";
 import { PriceFormDialog } from "./price-form-dialog";
 import { DeleteRecordDialog } from "./delete-record-dialog";
 import {
@@ -16,10 +16,12 @@ import {
 } from "./ui";
 export function RecordsTable({
   records,
+  items,
   total,
   page,
 }: {
   records: PriceRecord[];
+  items: PriceItem[];
   total: number;
   page: number;
 }) {
@@ -39,9 +41,11 @@ export function RecordsTable({
             <TableRow>
               {[
                 "تاریخ",
-                "قیمت هر متر مربع (تومان)",
+                "مورد",
+                "قیمت (تومان)",
                 "قیمت تتر (تومان)",
                 "قیمت هر گرم طلا (تومان)",
+                "ثبت‌کننده",
                 "عملیات",
               ].map((h) => (
                 <TableHead key={h} scope="col">
@@ -61,8 +65,9 @@ export function RecordsTable({
                     )}
                   </bdi>
                 </TableCell>
+                <TableCell>{items.find((item) => item.id === r.item_id)?.name ?? "مورد نامشخص"}</TableCell>
                 <TableCell className="price-cell">
-                  {number(r.apartment_price_toman, 0)}
+                  {number(r.price_toman, 0)}
                 </TableCell>
                 <TableCell>
                   {r.usdt_price_toman === null
@@ -74,9 +79,10 @@ export function RecordsTable({
                     ? "—"
                     : number(r.gold_18k_price_toman, 0)}
                 </TableCell>
+                <TableCell>{r.recorded_by}</TableCell>
                 <TableCell>
                   <div className="row-actions">
-                    <PriceFormDialog record={r} />
+                    <PriceFormDialog record={r} items={items} />
                     <DeleteRecordDialog record={r} />
                   </div>
                 </TableCell>
@@ -89,7 +95,7 @@ export function RecordsTable({
           <Database size={36} />
           <h3>هنوز اطلاعاتی ثبت نشده است</h3>
           <p>با ثبت اولین قیمت، آرشیو اطلاعات شما شکل می‌گیرد.</p>
-          <PriceFormDialog />
+          <PriceFormDialog items={items} />
         </div>
       )}
       <div className="pagination">

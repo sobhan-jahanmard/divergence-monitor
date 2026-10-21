@@ -3,13 +3,14 @@ import { LoginForm } from "@/components/login-form";
 import { RetryButton } from "@/components/retry-button";
 import { Header } from "@/components/header";
 import { Dashboard } from "@/components/dashboard";
-import { allRecords } from "@/lib/prices";
+import { allItems, allRecords } from "@/lib/prices";
 export const dynamic = "force-dynamic";
 export default async function Home() {
   if (!(await hasAccess())) return <LoginForm />;
   let records;
+  let items;
   try {
-    records = await allRecords();
+    [records, items] = await Promise.all([allRecords(), allItems()]);
   } catch (error) {
     return (
       <main className="shell">
@@ -26,8 +27,8 @@ export default async function Home() {
   }
   return (
     <main className="shell">
-      <Header />
-      <Dashboard records={records} />
+      <Header items={items} />
+      <Dashboard records={records} items={items} />
     </main>
   );
 }

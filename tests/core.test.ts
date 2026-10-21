@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { aggregate, convert, latestChange, pageNumber } from "../lib/metrics";
 import { gregorian, jalali, tehranToday, today } from "../lib/date";
-import { priceSchema, idSchema } from "../lib/validations";
+import { priceSchema, idSchema, itemNameSchema } from "../lib/validations";
 import type { PriceRecord } from "../lib/types";
 const record = (
   date: string,
@@ -10,10 +10,12 @@ const record = (
   gold: number | null,
 ): PriceRecord => ({
   id: "e3f4935a-245a-4ff1-99f9-609242a7a828",
+  item_id: "5c38ab35-1d3c-4bbd-a9e6-a333482487e9",
   record_date: date,
-  apartment_price_toman: apartment,
+  price_toman: apartment,
   usdt_price_toman: usdt,
   gold_18k_price_toman: gold,
+  recorded_by: "sobhan",
   created_at: "2026-01-01T00:00:00Z",
 });
 describe("financial calculations", () => {
@@ -95,30 +97,38 @@ describe("Jalali boundaries", () => {
 });
 describe("validation", () => {
   const valid = {
+    itemId: "5c38ab35-1d3c-4bbd-a9e6-a333482487e9",
     date: "1403/01/01",
-    apartment: "10,000,000",
+    price: "10,000,000",
     usdt: "",
     gold: "",
   };
   it("stores blank rates as null and accepts Persian digits", () => {
-    expect(priceSchema.parse({ ...valid, apartment: "۱۰٬۰۰۰٬۰۰۰" })).toEqual({
+    expect(priceSchema.parse({ ...valid, price: "۱۰٬۰۰۰٬۰۰۰" })).toEqual({
+      itemId: valid.itemId,
       date: "1403/01/01",
-      apartment: 10000000,
+      price: 10000000,
       usdt: null,
       gold: null,
     });
   });
   it.each(["0", "-1", "1.5", "1e9", "9007199254740992", "abc", ""])(
     "rejects invalid required money %s",
-    (apartment) => {
-      expect(priceSchema.safeParse({ ...valid, apartment }).success).toBe(
-        false,
-      );
+    (price) => {
+      expect(priceSchema.safeParse({ ...valid, price }).success).toBe(false);
     },
   );
   it("rejects invalid optional rates and IDs", () => {
     expect(priceSchema.safeParse({ ...valid, usdt: "0" }).success).toBe(false);
     expect(idSchema.safeParse("not-an-id").success).toBe(false);
+  });
+  it("requires a selected item and validates new names", () => {
+    expect(priceSchema.safeParse({ ...valid, itemId: "" }).success).toBe(false);
+    expect(
+      priceSchema.safeParse({ ...valid, itemId: "ملک مسکونی پیام" }).success,
+    ).toBe(false);
+    expect(itemNameSchema.safeParse("   ").success).toBe(false);
+    expect(itemNameSchema.parse("  ملک مسکونی پیام  ")).toBe("ملک مسکونی پیام");
   });
   it("rejects future dates using Tehran's day boundary", () => {
     vi.useFakeTimers();
@@ -126,11 +136,17 @@ describe("validation", () => {
       vi.setSystemTime(new Date("2026-10-20T20:29:59Z"));
       expect(tehranToday()).toBe("2026-10-20");
       expect(today()).toBe("1405/07/28");
-      expect(priceSchema.safeParse({ ...valid, date: "1405/07/29" }).success).toBe(false);
-      expect(priceSchema.safeParse({ ...valid, date: "1405/07/28" }).success).toBe(true);
+      expect(
+        priceSchema.safeParse({ ...valid, date: "1405/07/29" }).success,
+      ).toBe(false);
+      expect(
+        priceSchema.safeParse({ ...valid, date: "1405/07/28" }).success,
+      ).toBe(true);
       vi.setSystemTime(new Date("2026-10-20T20:30:00Z"));
       expect(tehranToday()).toBe("2026-10-21");
-      expect(priceSchema.safeParse({ ...valid, date: "1405/07/29" }).success).toBe(true);
+      expect(
+        priceSchema.safeParse({ ...valid, date: "1405/07/29" }).success,
+      ).toBe(true);
     } finally {
       vi.useRealTimers();
     }

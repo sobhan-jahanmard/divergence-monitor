@@ -2,7 +2,8 @@ import { logout } from "@/app/auth-actions";
 import Link from "next/link";
 import { ChartNoAxesCombined, House, Database } from "lucide-react";
 import { PriceFormDialog } from "./price-form-dialog";
-export function Header({ records = false }: { records?: boolean }) {
+import type { PriceItem } from "@/lib/types";
+export function Header({ records = false, items = [] }: { records?: boolean; items?: PriceItem[] }) {
   return (
     <>
       <nav className="topbar">
@@ -10,9 +11,7 @@ export function Header({ records = false }: { records?: boolean }) {
           <span className="brand-icon">
             <House size={22} />
           </span>
-          <span>
-            خانه‌نما<small>رصد بازار مسکن</small>
-          </span>
+          <span>خانه‌نما<small>رصد قیمت‌ها</small></span>
         </Link>
         <div className="nav-links">
           <Link className={!records ? "active" : ""} href="/">
@@ -38,15 +37,15 @@ export function Header({ records = false }: { records?: boolean }) {
           <h1>
             {records
               ? "مدیریت اطلاعات"
-              : "روند قیمت مسکن در قاسم‌آباد (واحد ۱۰۰ متری در «پیام»)"}
+              : "روند قیمت‌ها"}
           </h1>
           <p>
             {records
               ? "اطلاعات ثبت‌شده را مشاهده، ویرایش و مدیریت کنید."
-              : "مقایسه قیمت هر متر مربع آپارتمان با تتر و طلا"}
+              : "مقایسه قیمت موارد ثبت‌شده با تتر و طلا"}
           </p>
         </div>
-        <PriceFormDialog />
+        <PriceFormDialog items={items} />
       </header>
     </>
   );

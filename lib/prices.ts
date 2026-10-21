@@ -2,18 +2,18 @@ import "server-only";
 import { requireAccess } from "./auth";
 import { database } from "./supabase/server";
 import { priceColumn } from "./supabase/price-column";
-import type { PriceRecord } from "./types";
+import type { PriceItem, PriceRecord } from "./types";
 export function columns(column: "usdt_price_toman" | "usd_price_toman") {
   const rate =
     column === "usdt_price_toman"
       ? column
       : "usdt_price_toman:usd_price_toman";
-  return `id,record_date,apartment_price_toman,${rate},gold_18k_price_toman,created_at`;
+  return `id,item_id,record_date,price_toman,${rate},gold_18k_price_toman,recorded_by,created_at`;
 }
 export function normalize(rows: PriceRecord[]) {
   return rows.map((r) => {
     for (const key of [
-      "apartment_price_toman",
+      "price_toman",
       "usdt_price_toman",
       "gold_18k_price_toman",
     ] as const) {
@@ -22,13 +22,26 @@ export function normalize(rows: PriceRecord[]) {
     }
     return {
       ...r,
-      apartment_price_toman: Number(r.apartment_price_toman),
+      price_toman: Number(r.price_toman),
       usdt_price_toman:
         r.usdt_price_toman === null ? null : Number(r.usdt_price_toman),
       gold_18k_price_toman:
         r.gold_18k_price_toman === null ? null : Number(r.gold_18k_price_toman),
     };
   });
+}
+export async function allItems(): Promise<PriceItem[]> {
+  await requireAccess();
+  const { data, error } = await database()
+    .from("divergence_monitor_project_price_items")
+    .select("id,name")
+    .order("created_at")
+    .order("name");
+  if (error) {
+    console.error(error);
+    throw new Error("دریافت فهرست موارد ناموفق بود.");
+  }
+  return data as PriceItem[];
 }
 export async function allRecords() {
   await requireAccess();
