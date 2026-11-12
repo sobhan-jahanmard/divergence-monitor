@@ -8,6 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ReferenceLine,
 } from "recharts";
 import {
   ArrowUpLeft,
@@ -17,10 +18,16 @@ import {
   CircleDollarSign,
   Building2,
 } from "lucide-react";
-import { aggregate, latestChange, type Point } from "@/lib/metrics";
+import {
+  aggregate,
+  averagePrice,
+  latestChange,
+  type Point,
+} from "@/lib/metrics";
 import { number } from "@/lib/format";
 import type { PriceItem, PriceRecord, Aggregation } from "@/lib/types";
 import { PointDetailsDialog } from "./point-details-dialog";
+import { ChartAverageLine } from "./chart-average-line";
 const metrics = [
   {
     key: "toman",
@@ -47,15 +54,19 @@ const metrics = [
 function Chart({
   points,
   metric,
+  average,
   onSelectPoint,
 }: {
   points: Point[];
   metric: (typeof metrics)[number];
+  average: number | null;
   onSelectPoint: (point: Point, trigger: SVGGElement) => void;
 }) {
   const { latest, change } = latestChange(points, metric.key);
   const Icon = metric.icon;
   const chartId = useId();
+  const [averageY, setAverageY] = useState<number | null>(null);
+  const averageActive = averageY !== null;
   return (
     <section className="chart-card">
       <div className="chart-heading">
@@ -129,7 +140,9 @@ function Chart({
                 domain={["auto", "auto"]}
               />
               <Tooltip
+                cursor={averageActive ? false : undefined}
                 content={({ active, payload, label }) => {
+                  if (averageActive) return null;
                   const val = payload?.[0]?.value;
                   return active && val !== null && val !== undefined ? (
                     <div className="chart-tooltip" dir="rtl">
@@ -142,6 +155,19 @@ function Chart({
                   ) : null;
                 }}
               />
+              {metric.key !== "toman" && average !== null && (
+                <ReferenceLine
+                  y={average}
+                  ifOverflow="extendDomain"
+                  shape={
+                    <ChartAverageLine
+                      label={`${number(average, 2)} ${metric.unit}`}
+                      color={metric.color}
+                      onActiveChange={setAverageY}
+                    />
+                  }
+                />
+              )}
               <Line
                 type="linear"
                 dataKey={metric.key}
@@ -203,6 +229,19 @@ function Chart({
               />
             </LineChart>
           </ResponsiveContainer>
+          {averageY !== null && average !== null && (
+            <div
+              className="chart-tooltip chart-average-tooltip"
+              dir="rtl"
+              role="tooltip"
+              style={{ top: averageY > 80 ? averageY - 72 : averageY + 10 }}
+            >
+              <small>میانگین ماه‌ها با وزن برابر</small>
+              <strong>
+                {number(average, 2)} {metric.unit}
+              </strong>
+            </div>
+          )}
         </div>
       )}
       <div className="chart-footer">
@@ -212,6 +251,12 @@ function Chart({
           : metric.key === "usdt"
             ? "قیمت مورد ÷ قیمت هر تتر"
             : "قیمت مورد ÷ قیمت هر گرم طلای ۱۸ عیار"}
+        {metric.key !== "toman" && average !== null && (
+          <span className="chart-average-legend">
+            <span style={{ borderColor: metric.color }} />
+            میانگین ماه‌ها
+          </span>
+        )}
       </div>
     </section>
   );
@@ -292,6 +337,11 @@ export function Dashboard({
             key={metric.key}
             points={points}
             metric={metric}
+            average={
+              metric.key === "toman"
+                ? null
+                : averagePrice(selectedRecords, metric.key)
+            }
             onSelectPoint={(point, trigger) => {
               pointTrigger.current = trigger.id;
               setSelectedPoint(point);

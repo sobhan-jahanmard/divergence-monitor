@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { aggregate, convert, latestChange, pageNumber } from "../lib/metrics";
+import {
+  aggregate,
+  averagePrice,
+  convert,
+  latestChange,
+  pageNumber,
+} from "../lib/metrics";
 import { gregorian, jalali, tehranToday, today } from "../lib/date";
 import { priceSchema, idSchema, itemNameSchema } from "../lib/validations";
 import type { PriceRecord } from "../lib/types";
@@ -19,6 +25,42 @@ const record = (
   created_at: "2026-01-01T00:00:00Z",
 });
 describe("financial calculations", () => {
+  it("averages valid monthly prices, excluding months without that rate", () => {
+    const rows = [
+      record("2024-03-20", 100, 10, null),
+      record("2024-03-21", 300, 20, 30),
+      record("2024-04-20", 600, null, 20),
+      record("2024-05-21", 100, null, null),
+    ];
+    expect(averagePrice(rows, "usdt")).toBe(12.5);
+    expect(averagePrice(rows, "gold")).toBe(20);
+    expect(averagePrice([], "usdt")).toBeNull();
+    expect(averagePrice([rows[0]], "gold")).toBeNull();
+  });
+  it("gives a month with 1000 observations the same weight as a month with one", () => {
+    const firstMonth = record("2024-03-20", 100, 10, 20);
+    const lastMonth = record("2024-04-20", 900, 10, 20);
+    const rows = [
+      firstMonth,
+      ...Array.from({ length: 1000 }, () => ({ ...lastMonth })),
+    ];
+    for (const metric of ["usdt", "gold"] as const) {
+      expect(averagePrice(rows, metric)).toBeCloseTo(
+        averagePrice([firstMonth, lastMonth], metric)!,
+      );
+    }
+    expect(averagePrice(rows, "usdt")).toBeCloseTo(50);
+    expect(averagePrice(rows, "gold")).toBeCloseTo(25);
+  });
+  it("weights Jalali months equally across Gregorian month boundaries", () => {
+    const rows = [
+      record("2024-03-20", 100, 10, 20),
+      record("2024-04-19", 300, 10, 20),
+      record("2024-04-20", 1000, 10, 20),
+    ];
+    expect(averagePrice(rows, "usdt")).toBe(60);
+    expect(averagePrice(rows, "gold")).toBe(30);
+  });
   it("converts each record and preserves missing rates", () => {
     expect(convert(record("2024-03-20", 10000000, 50000, null))).toMatchObject({
       toman: 10000000,

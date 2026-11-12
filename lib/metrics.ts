@@ -57,6 +57,15 @@ export function latestChange(points: Point[], key: "toman" | "usdt" | "gold") {
       latest !== null && prev !== undefined ? (latest / prev - 1) * 100 : null,
   };
 }
+export function averagePrice(records: PriceRecord[], key: "usdt" | "gold") {
+  // Each Jalali month has equal weight, regardless of its record count.
+  const values = aggregate(records, "monthly")
+    .map((point) => point[key])
+    .filter((value): value is number => value !== null);
+  return values.length
+    ? values.reduce((mean, value) => mean + value / values.length, 0)
+    : null;
+}
 export function pageNumber(value: unknown) {
   return typeof value === "string" &&
     /^[1-9]\d*$/.test(value) &&
