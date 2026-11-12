@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -20,6 +20,7 @@ import {
 import { aggregate, latestChange, type Point } from "@/lib/metrics";
 import { number } from "@/lib/format";
 import type { PriceItem, PriceRecord, Aggregation } from "@/lib/types";
+import { PointDetailsDialog } from "./point-details-dialog";
 const metrics = [
   {
     key: "toman",
@@ -46,12 +47,15 @@ const metrics = [
 function Chart({
   points,
   metric,
+  onSelectPoint,
 }: {
   points: Point[];
   metric: (typeof metrics)[number];
+  onSelectPoint: (point: Point, trigger: SVGGElement) => void;
 }) {
   const { latest, change } = latestChange(points, metric.key);
   const Icon = metric.icon;
+  const chartId = useId();
   return (
     <section className="chart-card">
       <div className="chart-heading">
@@ -133,6 +137,7 @@ function Chart({
                       <strong>
                         {number(Number(val), 2)} {metric.unit}
                       </strong>
+                      <small>برای مشاهدهٔ ورودی‌ها روی نقطه کلیک کنید</small>
                     </div>
                   ) : null;
                 }}
@@ -142,13 +147,57 @@ function Chart({
                 dataKey={metric.key}
                 stroke={metric.color}
                 strokeWidth={2.5}
-                dot={{
-                  r: 3,
-                  fill: metric.color,
-                  stroke: "#fff",
-                  strokeWidth: 2,
+                dot={({ cx, cy, payload, index }) => {
+                  const point: Point = payload;
+                  if (
+                    cx === undefined ||
+                    cy === undefined ||
+                    point[metric.key] === null
+                  )
+                    return <g key={index} />;
+                  return (
+                    <g
+                      key={index}
+                      id={`${chartId}-point-${index}`}
+                      className="chart-point"
+                      role="button"
+                      tabIndex={0}
+                      aria-haspopup="dialog"
+                      aria-label={`جزئیات ${digitsFa(point.label)}، ${number(point[metric.key]!, 2)} ${metric.unit}`}
+                      onClick={(event) =>
+                        onSelectPoint(point, event.currentTarget)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onSelectPoint(point, event.currentTarget);
+                        }
+                      }}
+                    >
+                      <circle cx={cx} cy={cy} r={22} fill="transparent" />
+                      <circle
+                        className="chart-point-focus"
+                        cx={cx}
+                        cy={cy}
+                        r={9}
+                        fill="none"
+                        stroke={metric.color}
+                        strokeWidth={2}
+                      />
+                      <circle
+                        className="chart-point-marker"
+                        cx={cx}
+                        cy={cy}
+                        r={4}
+                        fill={metric.color}
+                        stroke="#fff"
+                        strokeWidth={2}
+                      />
+                    </g>
+                  );
                 }}
-                activeDot={{ r: 5 }}
+                activeDot={false}
                 connectNulls={false}
                 isAnimationActive={false}
               />
@@ -170,21 +219,37 @@ function Chart({
 function digitsFa(s: string) {
   return s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
-export function Dashboard({ records, items }: { records: PriceRecord[]; items: PriceItem[] }) {
+export function Dashboard({
+  records,
+  items,
+}: {
+  records: PriceRecord[];
+  items: PriceItem[];
+}) {
   const [mode, setMode] = useState<Aggregation>("daily");
   const [selectedItemId, setSelectedItemId] = useState(items[0]?.id ?? "");
-  const selectedRecords = records.filter((record) => record.item_id === selectedItemId);
+  const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
+  const pointTrigger = useRef<string | null>(null);
+  const selectedRecords = records.filter(
+    (record) => record.item_id === selectedItemId,
+  );
   const points = aggregate(selectedRecords, mode);
   return (
     <>
       <div className="item-selector">
-        <label htmlFor="dashboard-item">نمودار کدام مورد را می‌خواهید ببینید؟</label>
+        <label htmlFor="dashboard-item">
+          نمودار کدام مورد را می‌خواهید ببینید؟
+        </label>
         <select
           id="dashboard-item"
           value={selectedItemId}
           onChange={(event) => setSelectedItemId(event.target.value)}
         >
-          {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          {items.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
         </select>
       </div>
       <div className="dashboard-toolbar">
@@ -216,11 +281,33 @@ export function Dashboard({ records, items }: { records: PriceRecord[]; items: P
           ))}
         </div>
       </div>
+      {points.length > 0 && (
+        <p className="chart-instructions">
+          برای مشاهدهٔ قیمت و نرخ‌های ورودی، روی هر نقطه کلیک کنید.
+        </p>
+      )}
       <div className="charts">
         {metrics.map((metric) => (
-          <Chart key={metric.key} points={points} metric={metric} />
+          <Chart
+            key={metric.key}
+            points={points}
+            metric={metric}
+            onSelectPoint={(point, trigger) => {
+              pointTrigger.current = trigger.id;
+              setSelectedPoint(point);
+            }}
+          />
         ))}
       </div>
+      <PointDetailsDialog
+        point={selectedPoint}
+        items={items}
+        onClose={() => setSelectedPoint(null)}
+        onRestoreFocus={() => {
+          if (pointTrigger.current)
+            document.getElementById(pointTrigger.current)?.focus();
+        }}
+      />
       <p className="footnote">
         همه مبالغ این سامانه به تومان ثبت می‌شوند. میانگین‌ها بر اساس تقویم شمسی
         و فقط از مقادیر موجود محاسبه می‌شوند.

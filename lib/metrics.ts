@@ -6,18 +6,18 @@ export type Point = {
   toman: number;
   usdt: number | null;
   gold: number | null;
+  records: PriceRecord[];
 };
 export function convert(r: PriceRecord): Point {
   return {
     date: r.record_date,
     label: jalali(r.record_date),
     toman: r.price_toman,
-    usdt: r.usdt_price_toman
-      ? r.price_toman / r.usdt_price_toman
-      : null,
+    usdt: r.usdt_price_toman ? r.price_toman / r.usdt_price_toman : null,
     gold: r.gold_18k_price_toman
       ? r.price_toman / r.gold_18k_price_toman
       : null,
+    records: [r],
   };
 }
 export function aggregate(records: PriceRecord[], mode: Aggregation): Point[] {
@@ -41,6 +41,7 @@ export function aggregate(records: PriceRecord[], mode: Aggregation): Point[] {
       toman: avg("toman")!,
       usdt: avg("usdt"),
       gold: avg("gold"),
+      records: ps.flatMap((point) => point.records),
     };
   });
 }

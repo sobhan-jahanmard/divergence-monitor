@@ -11,3 +11,13 @@ When a change adds or edits a file in `supabase/migrations/`, do not stop after 
 5. Verify the resulting tables, columns, constraints, and at least one app read using the configured project. Report the actual verification result. If the shared connection is unavailable, say the migration is pending and request access; never say it was applied when only the file was created.
 
 Keep every table this application creates under the `divergence_monitor_project_` prefix. Migration `004_add_price_items_and_recorders.sql` creates `divergence_monitor_project_price_items`, links existing records to the default item, renames `apartment_price_toman` to `price_toman`, and backfills `recorded_by` with `sobhan`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

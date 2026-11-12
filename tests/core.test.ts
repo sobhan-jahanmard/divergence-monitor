@@ -69,6 +69,29 @@ describe("financial calculations", () => {
     expect(aggregate(rows, "daily").map((p) => p.toman)).toEqual([100, 200]);
     expect(aggregate(rows, "monthly")[0].toman).toBe(150);
   });
+  it("links each daily point to its own inputs even on duplicate dates", () => {
+    const first = { ...record("2024-03-20", 100, 10, null), id: "first" };
+    const second = { ...record("2024-03-20", 200, 20, 30), id: "second" };
+    const points = aggregate([first, second], "daily");
+    expect(points[0].records).toEqual([first]);
+    expect(points[1].records).toEqual([second]);
+  });
+  it("includes only the contributing records in each Jalali period", () => {
+    const first = record("2024-03-20", 100, 10, null);
+    const second = record("2024-03-21", 200, null, 30);
+    const nextMonth = record("2024-04-20", 300, 20, 40);
+    const nextYear = record("2025-03-21", 400, 30, 50);
+    const rows = [nextYear, second, nextMonth, first];
+    expect(aggregate(rows, "monthly").map((point) => point.records)).toEqual([
+      [first, second],
+      [nextMonth],
+      [nextYear],
+    ]);
+    expect(aggregate(rows, "yearly").map((point) => point.records)).toEqual([
+      [first, second, nextMonth],
+      [nextYear],
+    ]);
+  });
 });
 describe("Jalali boundaries", () => {
   it("round trips Gregorian storage dates", () => {
