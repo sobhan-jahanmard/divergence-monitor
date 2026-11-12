@@ -46,6 +46,7 @@ export function PriceFormDialog({
   >(null);
   const itemSelectId = useId();
   const newItemInputId = useId();
+  const notesId = useId();
   const router = useRouter();
   const availableItems = [
     ...items,
@@ -69,6 +70,7 @@ export function PriceFormDialog({
       gold: record?.gold_18k_price_toman
         ? String(record.gold_18k_price_toman)
         : "",
+      notes: record?.notes ?? "",
     },
   });
   const busy = form.formState.isSubmitting || fetching || creatingItem;
@@ -174,6 +176,7 @@ export function PriceFormDialog({
               gold: record?.gold_18k_price_toman
                 ? String(record.gold_18k_price_toman)
                 : "",
+              notes: record?.notes ?? "",
             });
           }
         }
@@ -417,6 +420,29 @@ export function PriceFormDialog({
                 )}
               </div>
             ))}
+            <div className="form-field">
+              <label htmlFor={notesId}>
+                توضیحات <span className="optional">اختیاری</span>
+              </label>
+              <textarea
+                {...form.register("notes")}
+                id={notesId}
+                className="input notes-input"
+                rows={3}
+                maxLength={2000}
+                placeholder="مثلاً دلیل تغییر قیمت یا شرایط این معامله"
+                aria-invalid={!!form.formState.errors.notes}
+                aria-describedby={`${notesId}-hint${form.formState.errors.notes ? ` ${notesId}-error` : ""}`}
+              />
+              <p id={`${notesId}-hint`} className="notes-hint">
+                نقطهٔ دارای توضیحات در نمودار قرمز نمایش داده می‌شود.
+              </p>
+              {form.formState.errors.notes && (
+                <p id={`${notesId}-error`} className="field-error">
+                  {form.formState.errors.notes.message}
+                </p>
+              )}
+            </div>
             <div className="form-field">
               <label htmlFor="recorded-by">
                 ثبت‌کننده <span className="required">*</span>

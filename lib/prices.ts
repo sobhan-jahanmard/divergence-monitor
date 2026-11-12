@@ -5,10 +5,8 @@ import { priceColumn } from "./supabase/price-column";
 import type { PriceItem, PriceRecord } from "./types";
 export function columns(column: "usdt_price_toman" | "usd_price_toman") {
   const rate =
-    column === "usdt_price_toman"
-      ? column
-      : "usdt_price_toman:usd_price_toman";
-  return `id,item_id,record_date,price_toman,${rate},gold_18k_price_toman,recorded_by,created_at`;
+    column === "usdt_price_toman" ? column : "usdt_price_toman:usd_price_toman";
+  return `id,item_id,record_date,price_toman,${rate},gold_18k_price_toman,recorded_by,notes,created_at`;
 }
 export function normalize(rows: PriceRecord[]) {
   return rows.map((r) => {
@@ -83,5 +81,9 @@ export async function paginatedRecords(page: number) {
     .order("id", { ascending: false })
     .range((current - 1) * 10, current * 10 - 1);
   if (err) throw new Error("دریافت رکوردها ناموفق بود.");
-  return { records: normalize(data as unknown as PriceRecord[]), total, current };
+  return {
+    records: normalize(data as unknown as PriceRecord[]),
+    total,
+    current,
+  };
 }

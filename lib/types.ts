@@ -6,6 +6,7 @@ export type PriceRecord = {
   usdt_price_toman: number | null;
   gold_18k_price_toman: number | null;
   recorded_by: string;
+  notes: string | null;
   created_at: string;
 };
 export type PriceItem = { id: string; name: string };

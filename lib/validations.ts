@@ -39,5 +39,11 @@ export const priceSchema = z.object({
   price: money,
   usdt: optional,
   gold: optional,
+  notes: z
+    .string()
+    .trim()
+    .max(2000, "توضیحات باید حداکثر ۲۰۰۰ نویسه باشد")
+    .optional()
+    .transform((value) => value || null),
 });
 export const idSchema = z.uuid({ error: "شناسه رکورد نامعتبر است" });

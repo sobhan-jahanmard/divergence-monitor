@@ -123,6 +123,7 @@ export async function saveRecord(
       [rateColumn]: v.usdt,
       gold_18k_price_toman: v.gold,
       recorded_by: "sobhan",
+      notes: v.notes,
     };
     let query = original
       ? db
@@ -143,6 +144,10 @@ export async function saveRecord(
         original.gold_18k_price_toman === null
           ? query.is("gold_18k_price_toman", null)
           : query.eq("gold_18k_price_toman", original.gold_18k_price_toman);
+      query =
+        original.notes == null
+          ? query.is("notes", null)
+          : query.eq("notes", original.notes);
     }
     const { data, error } = await query.select("id");
     if (error) {
@@ -196,6 +201,10 @@ export async function deleteRecord(
       original.gold_18k_price_toman === null
         ? query.is("gold_18k_price_toman", null)
         : query.eq("gold_18k_price_toman", original.gold_18k_price_toman);
+    query =
+      original.notes == null
+        ? query.is("notes", null)
+        : query.eq("notes", original.notes);
     const { data, error } = await query.select("id");
     if (error) throw new Error("حذف اطلاعات ناموفق بود.");
     if (!data?.length)

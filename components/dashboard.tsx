@@ -25,6 +25,7 @@ import {
   type Point,
 } from "@/lib/metrics";
 import { number } from "@/lib/format";
+import { jalali } from "@/lib/date";
 import type { PriceItem, PriceRecord, Aggregation } from "@/lib/types";
 import { PointDetailsDialog } from "./point-details-dialog";
 import { ChartAverageLine } from "./chart-average-line";
@@ -144,12 +145,39 @@ function Chart({
                 content={({ active, payload, label }) => {
                   if (averageActive) return null;
                   const val = payload?.[0]?.value;
+                  const point = payload?.[0]?.payload as Point | undefined;
+                  const annotated =
+                    point?.records.filter((record) => record.notes?.trim()) ??
+                    [];
                   return active && val !== null && val !== undefined ? (
                     <div className="chart-tooltip" dir="rtl">
                       <small>{digitsFa(String(label))}</small>
                       <strong>
                         {number(Number(val), 2)} {metric.unit}
                       </strong>
+                      {annotated.length > 0 && (
+                        <div className="chart-note-preview">
+                          <b>توضیحات</b>
+                          {annotated.slice(0, 3).map((record) => (
+                            <p key={record.id}>
+                              {point && point.records.length > 1 && (
+                                <small>
+                                  {digitsFa(jalali(record.record_date))} ·{" "}
+                                </small>
+                              )}
+                              {record.notes!.length > 240
+                                ? `${record.notes!.slice(0, 240)}…`
+                                : record.notes}
+                            </p>
+                          ))}
+                          {annotated.length > 3 && (
+                            <small>
+                              {number(annotated.length - 3, 0)} توضیح دیگر در
+                              جزئیات
+                            </small>
+                          )}
+                        </div>
+                      )}
                       <small>برای مشاهدهٔ ورودی‌ها روی نقطه کلیک کنید</small>
                     </div>
                   ) : null;
@@ -175,6 +203,10 @@ function Chart({
                 strokeWidth={2.5}
                 dot={({ cx, cy, payload, index }) => {
                   const point: Point = payload;
+                  const hasNotes = point.records.some((record) =>
+                    record.notes?.trim(),
+                  );
+                  const pointColor = hasNotes ? "#b54444" : metric.color;
                   if (
                     cx === undefined ||
                     cy === undefined ||
@@ -189,7 +221,7 @@ function Chart({
                       role="button"
                       tabIndex={0}
                       aria-haspopup="dialog"
-                      aria-label={`جزئیات ${digitsFa(point.label)}، ${number(point[metric.key]!, 2)} ${metric.unit}`}
+                      aria-label={`جزئیات ${digitsFa(point.label)}، ${number(point[metric.key]!, 2)} ${metric.unit}${hasNotes ? "، دارای توضیحات" : ""}`}
                       onClick={(event) =>
                         onSelectPoint(point, event.currentTarget)
                       }
@@ -208,15 +240,15 @@ function Chart({
                         cy={cy}
                         r={9}
                         fill="none"
-                        stroke={metric.color}
+                        stroke={pointColor}
                         strokeWidth={2}
                       />
                       <circle
                         className="chart-point-marker"
                         cx={cx}
                         cy={cy}
-                        r={4}
-                        fill={metric.color}
+                        r={hasNotes ? 5 : 4}
+                        fill={pointColor}
                         stroke="#fff"
                         strokeWidth={2}
                       />
@@ -258,6 +290,14 @@ function Chart({
           </span>
         )}
       </div>
+      {points.some((point) =>
+        point.records.some((record) => record.notes?.trim()),
+      ) && (
+        <p className="chart-notes-legend">
+          <span />
+          نقطهٔ قرمز: دارای توضیحات
+        </p>
+      )}
     </section>
   );
 }

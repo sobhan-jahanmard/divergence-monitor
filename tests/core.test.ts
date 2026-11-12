@@ -22,6 +22,7 @@ const record = (
   usdt_price_toman: usdt,
   gold_18k_price_toman: gold,
   recorded_by: "sobhan",
+  notes: null,
   created_at: "2026-01-01T00:00:00Z",
 });
 describe("financial calculations", () => {
@@ -112,7 +113,11 @@ describe("financial calculations", () => {
     expect(aggregate(rows, "monthly")[0].toman).toBe(150);
   });
   it("links each daily point to its own inputs even on duplicate dates", () => {
-    const first = { ...record("2024-03-20", 100, 10, null), id: "first" };
+    const first = {
+      ...record("2024-03-20", 100, 10, null),
+      id: "first",
+      notes: "توضیح نقطهٔ اول",
+    };
     const second = { ...record("2024-03-20", 200, 20, 30), id: "second" };
     const points = aggregate([first, second], "daily");
     expect(points[0].records).toEqual([first]);
@@ -175,6 +180,7 @@ describe("validation", () => {
       price: 10000000,
       usdt: null,
       gold: null,
+      notes: null,
     });
   });
   it.each(["0", "-1", "1.5", "1e9", "9007199254740992", "abc", ""])(
@@ -186,6 +192,15 @@ describe("validation", () => {
   it("rejects invalid optional rates and IDs", () => {
     expect(priceSchema.safeParse({ ...valid, usdt: "0" }).success).toBe(false);
     expect(idSchema.safeParse("not-an-id").success).toBe(false);
+  });
+  it("trims notes, keeps line breaks and rejects oversized descriptions", () => {
+    expect(
+      priceSchema.parse({ ...valid, notes: "  یادداشت\nخط دوم  " }).notes,
+    ).toBe("یادداشت\nخط دوم");
+    expect(priceSchema.parse({ ...valid, notes: " \n\t " }).notes).toBeNull();
+    expect(
+      priceSchema.safeParse({ ...valid, notes: "ا".repeat(2001) }).success,
+    ).toBe(false);
   });
   it("requires a selected item and validates new names", () => {
     expect(priceSchema.safeParse({ ...valid, itemId: "" }).success).toBe(false);

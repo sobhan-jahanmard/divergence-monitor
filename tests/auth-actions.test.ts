@@ -27,6 +27,7 @@ it("rejects unauthenticated mutations before touching the database", async () =>
     usdt_price_toman: null,
     gold_18k_price_toman: null,
     recorded_by: "sobhan",
+    notes: null,
     created_at: "2026-10-20T00:00:00Z",
   };
   const input = {
@@ -100,6 +101,7 @@ it("saves the selected item ID and required recorder", async () => {
     price: "1000000",
     usdt: "100000",
     gold: "10000000",
+    notes: "  توضیح ثبت قیمت  ",
   });
   expect(result).toEqual({ ok: true });
   expect(addRecord).toHaveBeenCalledWith(
@@ -107,6 +109,49 @@ it("saves the selected item ID and required recorder", async () => {
       item_id: itemId,
       price_toman: 1000000,
       recorded_by: "sobhan",
+      notes: "توضیح ثبت قیمت",
     }),
   );
 });
+
+it.each([null, "توضیح قبلی"])(
+  "guards note edits against concurrent changes (%s)",
+  async (notes) => {
+    mocks.requireAccess.mockResolvedValueOnce(undefined);
+    const original: PriceRecord = {
+      id: "e3f4935a-245a-4ff1-99f9-609242a7a828",
+      item_id: "5c38ab35-1d3c-4bbd-a9e6-a333482487e9",
+      record_date: "2026-10-20",
+      price_toman: 100,
+      usdt_price_toman: null,
+      gold_18k_price_toman: null,
+      recorded_by: "sobhan",
+      notes,
+      created_at: "2026-10-20T00:00:00Z",
+    };
+    const query = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      select: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const update = vi.fn().mockReturnValue(query);
+    mocks.database.mockReturnValue({ from: () => ({ update }) });
+    const result = await saveRecord(
+      {
+        itemId: original.item_id,
+        date: "1405/07/28",
+        price: "100",
+        usdt: "",
+        gold: "",
+        notes: " ",
+      },
+      original,
+    );
+    expect(result.ok).toBe(false);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: null }),
+    );
+    if (notes === null) expect(query.is).toHaveBeenCalledWith("notes", null);
+    else expect(query.eq).toHaveBeenCalledWith("notes", notes);
+  },
+);

@@ -92,6 +92,12 @@ export function PointDetailsDialog({
                   </dd>
                 </div>
               </dl>
+              {record.notes && (
+                <div className="point-record-notes">
+                  <h4>توضیحات</h4>
+                  <p>{record.notes}</p>
+                </div>
+              )}
             </article>
           ))}
         </div>
